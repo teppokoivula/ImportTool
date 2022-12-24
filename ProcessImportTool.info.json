@@ -1,0 +1,17 @@
+{
+	"title": "Process Import Tool",
+	"version": "0.0.1",
+	"summary": "Admin interface for the Import Tool module.",
+	"author": "Teppo Koivula",
+	"icon": "table",
+	"page": {
+		"name": "import-tool",
+		"parent": "setup",
+		"title": "Import Content"
+	},
+	"permission": "import-tool",
+	"permissions": {
+		"import-tool": "Use Import Tool"
+	},
+	"requires": "ProcessWire>=3.0.200, ImportTool"
+}

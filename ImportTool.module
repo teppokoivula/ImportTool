@@ -1,0 +1,184 @@
+<?php namespace ProcessWire;
+
+use ImportTool\CSVReader;
+
+class ImportTool extends WireData implements Module {
+
+	public $profile;
+
+	public function init() {
+		/** @var WireClassLoader */
+		$classLoader = $this->wire('classLoader');
+		if (!$classLoader->hasNamespace('ImportTool')) {
+			$classLoader->addNamespace('ImportTool', __DIR__ . '/lib/');
+		}
+	}
+
+	public function setProfile(string $profile) {
+		$config = $this->config->ImportTool;
+		$this->profile = $config['profiles'][$profile] ?? null;
+		if (empty($this->profile)) {
+			$this->error($this->_('Import profile not found'));
+		}
+	}
+
+	public function importFromFile(string $filename): int {
+
+		$reader = new CSVReader($this->profile['reader_settings'] ?? []);
+		$reader->open($filename);
+
+		$num_imported = 0;
+		$row_num = 0;
+		while ($row = $reader->getRow()) {
+			++$row_num;
+			if ($row_num === 1) continue;
+			if (empty($row) || count($row) == 1 && empty($row[0])) continue;
+			if ($this->importPage($row)) {
+				++$num_imported;
+			}
+		}
+
+		$reader->close();
+
+		$this->files->unlink($filename);
+
+		return $num_imported;
+	}
+
+	protected function importPage(array $data): bool {
+
+		$page = $this->pages->newPage([
+			'template' => $this->profile['template'],
+			'parent' => $this->profile['parent'],
+		]);
+		$page->setTrackChanges(true);
+
+		foreach ($this->profile['fields'] as $column => $field) {
+			$value = $data[$column] ?? null;
+			if ($value !== null && !empty($field['sanitize'])) {
+				$value = $this->sanitizer->sanitize($value, $field['sanitize']);
+			}
+			$this->importPageValue($page, $field['name'], $value);
+		}
+
+		if (!$page->name) {
+			$this->error($this->_('Unable to import page, no "name" or "title" field defined.'));
+			if ($this->user->isSuperuser()) {
+				$this->error("<pre>" . print_r($data, true) . "</pre>", Notice::allowMarkup);
+			}
+			return false;
+		}
+
+		$existing_page = $this->pages->get([
+			'parent_id' => $this->profile['parent'],
+			'name' => $page->name,
+		]);
+		if ($existing_page->id) {
+			$on_duplicate = $this->profile['on_duplicate'] ?? 'continue';
+			if ($on_duplicate === 'make_unique') {
+				$page->name = $this->pages->names()->uniquePageName([
+					'name' => $page->name,
+					'parent' => $this->pages->get($this->profile['parent']),
+				]);
+				$page->save();
+			} else if ($on_duplicate === 'update_existing') {
+				$page = $this->updatePage($existing_page, $page);
+			} else {
+				$this->message(sprintf(
+					$this->_('Skipping page with duplicate name "%s"'),
+					$page->name
+				));
+			}
+		} else {
+			$page->save();
+		}
+
+		if ($page->id && !empty($page->_import_tool_data)) {
+			foreach ($page->_import_tool_data as $name => $value) {
+				$page->set($name, $value);
+			}
+			$page->save();
+		}
+
+		return $page->id ?: false;
+	}
+
+	protected function importPageValue(Page $page, $name, $value): bool {
+
+		$field = $this->fields->get($name);
+		if (!$field) return false;
+
+		if ($field->type instanceof FieldtypeFile) {
+
+			$value = trim($value);
+			// split delimeted data to an array
+			$value = preg_split('/[\r\n\t|]+/', $value);
+			if ($field->get('maxFiles') == 1) {
+				$value = array_shift($value);
+			}
+			$data = $page->_import_tool_data ?: [];
+			$data[$name] = $value;
+			$page->_import_tool_data = $data;
+
+		} else if ($field->type instanceof FieldtypePage) {
+
+			if (($this->profile['on_missing_page_ref'] ?? null) === 'create') {
+				$field->setQuietly('_sanitizeValueString', 'create');
+				$page->set($name, $value);
+				$field->offsetUnset('_sanitizeValueString');
+			} else {
+				$page->set($name, $value);
+			}
+
+		} else if ($name === 'title') {
+
+			$page->set($name, $value);
+			if (!$page->name) {
+				$page->name = $this->sanitizer->pageName($value, Sanitizer::translate);
+			}
+
+		} else {
+
+			$page->set($name, $value);
+
+		}
+
+		return true;
+	}
+
+	protected function updatePage(Page $existing_page, Page $page) {
+
+		if ($existing_page->template->id !== $page->template->id) {
+			$this->error(sprintf(
+				$this->_('Unable to update "%s" because it uses a different template (%s) than new page (%s)'),
+				$existing_page->name,
+				$existing_page->template->label ?: $existing_page->template->name,
+				$page->template->label ?: $page->template->name
+			));
+			return false;
+		}
+
+		/** @var array */
+		$data = $page->_import_tool_data;
+
+		foreach ($this->profile['fields'] as $column => $field) {
+			$value = $data[$column] ?? $page->get($field['name']);
+			if ($value !== null && !empty($field['sanitize'])) {
+				$value = $this->sanitizer->sanitize($value, $field['sanitize']);
+			}
+			$field = $this->wire('fields')->get($field['name']);
+			$existing_value = $existing_page->get($field['name']);
+			$existing_page->set($field['name'], $value);
+
+			if ($field->type instanceof FieldtypePage) {
+				if (((string) $existing_value) === ((string) $page->get($field['name']))) {
+					$existing_page->untrackChange($field['name']);
+				}
+			}
+		}
+
+		$existing_page->save();
+		return $existing_page;
+	}
+
+}

@@ -1,0 +1,9 @@
+{
+	"title": "Import Tool",
+	"version": "0.0.1",
+	"summary": "General purpose tool for importing content via predefined import profiles.",
+	"author": "Teppo Koivula",
+	"icon": "table",
+	"installs": "ProcessImportTool",
+	"requires": "ProcessWire>=3.0.200"
+}

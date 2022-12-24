@@ -1,0 +1,92 @@
+<?php namespace ProcessWire;
+
+class ProcessImportTool extends Process implements Module {
+
+	public function ___execute() {
+		if ($this->input->post('submit')) {
+			$this->processForm();
+		}
+		return $this->getForm()->render();
+	}
+
+	protected function processForm() {
+
+		$form = $this->getForm();
+		$form->processInput($this->input->post);
+		if (count($form->getErrors())) {
+			$this->error($form->getErrors());
+			return false;
+		}
+
+		/** @var Pagefiles */
+		$import_file = $form->getChildByName('import_file')->value;
+		if (!count($import_file)) {
+			$this->error($this->_('Missing required import file'));
+			return false;
+		}
+
+		$config = $this->config->ImportTool;
+		$import_profile_name = $form->getChildByName('import_profile')->value;
+		$import_profile = $config['profiles'][$import_profile_name] ?? null;
+		if (empty($import_profile)) {
+			$this->error($this->_('Missing required import profile'));
+			return false;
+		}
+
+		$import_file_name = 'import-' . time() . '-' . $this->user->id . '.csv';
+		$import_file_path = $this->getProcessPage()->filesManager()->path();
+
+		$import_file = $import_file->first();
+		$import_file->rename($import_file_path . $import_file_name);
+		$import_file = $import_file->filename;
+
+		if (is_file($import_file)) {
+			/** @var ImportTool */
+			$importTool = $this->modules->get('ImportTool');
+			$importTool->setProfile($import_profile_name);
+			if ($num_imported = $importTool->importFromFile($import_file)) {
+				$this->session->message(sprintf($this->_('Imported %d pages'), $num_imported));
+				$this->session->redirect($this->page->url, false);
+			}
+		}
+	}
+
+	protected function getForm(): InputfieldForm {
+
+		/** @var InputfieldForm $form */
+		$form = $this->modules->get('InputfieldForm');
+
+		/** @var InputfieldSelect */
+		$import_profile = $this->modules->get('InputfieldSelect');
+		$import_profile->name = 'import_profile';
+		$import_profile->label = $this->_('Import profile');
+		$import_profile->required = true;
+		if (count($this->config->ImportTool['profiles'])) {
+			foreach ($this->config->ImportTool['profiles'] as $profile_name => $profile_data) {
+				$import_profile->addOption($profile_name, $profile_data['label'] ?? $profile_name);
+			}
+		}
+		$form->add($import_profile);
+
+		/** @var InputfieldFile */
+		$import_file = $this->modules->get('InputfieldFile');
+		$import_file->name = 'import_file';
+		$import_file->label = $this->_('Import file');
+		$import_file->icon = 'file-text';
+		$import_file->extensions = 'csv txt';
+		$import_file->maxFiles = 1;
+		$import_file->descriptionRows = 0;
+		$import_file->overwrite = true;
+		$import_file->required = true;
+		$form->add($import_file);
+
+		/** @var InputfieldSubmit */
+		$submit = $this->modules->get("InputfieldSubmit");
+		$submit->name = 'submit';
+		$submit->value = $this->_('Submit');
+		$form->add($submit);
+
+		return $form;
+	}
+
+}

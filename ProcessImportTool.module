@@ -60,11 +60,24 @@ class ProcessImportTool extends Process implements Module {
 		$import_profile = $this->modules->get('InputfieldSelect');
 		$import_profile->name = 'import_profile';
 		$import_profile->label = $this->_('Import profile');
+		$import_profile->description = implode(' ', [
+			$this->_('Import profile defines the exact process used for importing data from import file.'),
+			$this->_('Be sure to select an import profile designed specifically for the file you want to import.'),
+		]);
+		$import_profile->notes = $this->_('Once you select a profile, any additional notes it may have will appear here.');
 		$import_profile->required = true;
 		$import_profile->attr('required', true);
+		$import_profile->attr('onchange', <<<JAVASCRIPT
+var notes = this.nextElementSibling
+notes.style.wordBreak = 'break-all'
+if (!notes.getAttribute('data-notes')) notes.setAttribute('data-notes', notes.innerText)
+notes.innerText = this.selectedIndex ? this.options[this.selectedIndex].getAttribute('data-notes') : notes.getAttribute('data-notes')
+JAVASCRIPT);
 		if (count($this->config->ImportTool['profiles'])) {
 			foreach ($this->config->ImportTool['profiles'] as $profile_name => $profile_data) {
-				$import_profile->addOption($profile_name, $profile_data['label'] ?? $profile_name);
+				$import_profile->addOption($profile_name, $profile_data['label'] ?? $profile_name, [
+					'data-notes' => $profile_data['notes'] ?? '',
+				]);
 			}
 		}
 		$form->add($import_profile);

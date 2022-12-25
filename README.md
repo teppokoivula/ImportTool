@@ -128,4 +128,14 @@ In some cases aforementioned callback cannot be executed right away (e.g. in cas
 				],
 ```
 
+You can add notes for import profiles. These will be displayed in the Import Tool Admin GUI once you select said import profile:
+
+```php
+$config->ImportTools = [
+	'profiles' => [
+		'members' => [
+			'label' => 'Members',
+			'notes' => 'title,first_name,last_name,date_of_birth,email',
+```
+
 4) Navigate to the Import Tool page in the Admin, select a profile and file, and hit "Import".

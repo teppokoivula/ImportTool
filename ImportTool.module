@@ -22,19 +22,24 @@ class ImportTool extends WireData implements Module {
 		}
 	}
 
-	public function importFromFile(string $filename): int {
+	public function importFromFile(string $filename): array {
 
 		$reader = new CSVReader($this->profile['reader_settings'] ?? []);
 		$reader->open($filename);
 
-		$num_imported = 0;
-		$row_num = 0;
+		$count = [
+			'imported' => 0,
+			'updated' => 0,
+			'row_num' => 0,
+		];
+
 		while ($row = $reader->getRow()) {
-			++$row_num;
-			if ($row_num === 1) continue;
+			++$count['row_num'];
+			if ($count['row_num'] === 1) continue;
 			if (empty($row) || count($row) == 1 && empty($row[0])) continue;
-			if ($this->importPage($row)) {
-				++$num_imported;
+			$imported_page = $this->importPage($row);
+			if ($imported_page) {
+				++$count[$imported_page->_import_tool_existing_page ? 'updated' : 'imported'];
 			}
 		}
 
@@ -42,10 +47,10 @@ class ImportTool extends WireData implements Module {
 
 		$this->files->unlink($filename);
 
-		return $num_imported;
+		return $count;
 	}
 
-	protected function importPage(array $data): bool {
+	protected function importPage(array $data) {
 
 		$page = $this->pages->newPage([
 			'template' => $this->profile['template'],
@@ -102,11 +107,16 @@ class ImportTool extends WireData implements Module {
 				$page->save();
 			} else if ($on_duplicate === 'update_existing') {
 				$page = $this->updatePage($existing_page, $page, $data);
+				if (!$page) {
+					return false;
+				}
+				$page->_import_tool_existing_page = true;
 			} else {
 				$this->message(sprintf(
 					$this->_('Skipping page with duplicate name "%s"'),
 					$page->name
 				));
+				return false;
 			}
 		} else {
 			$page->save();
@@ -125,7 +135,7 @@ class ImportTool extends WireData implements Module {
 			$page->save();
 		}
 
-		return $page->id ?: false;
+		return $page;
 	}
 
 	protected function importPageValue(Page $page, $name, $value): bool {
@@ -135,9 +145,8 @@ class ImportTool extends WireData implements Module {
 
 		if ($field->type instanceof FieldtypeFile) {
 
-			$value = trim($value);
 			// split delimeted data to an array
-			$value = preg_split('/[\r\n\t|]+/', $value);
+			$value = preg_split('/[\r\n\t|]+/', trim($value));
 			if ($field->get('maxFiles') == 1) {
 				$value = array_shift($value);
 			}
@@ -147,7 +156,8 @@ class ImportTool extends WireData implements Module {
 
 		} else if ($field->type instanceof FieldtypePage) {
 
-			if (($this->profile['on_missing_page_ref'] ?? null) === 'create') {
+			$on_missing_page_ref = $this->profile['on_missing_page_ref'] ?? null;
+			if ($on_missing_page_ref === 'create') {
 				$field->setQuietly('_sanitizeValueString', 'create');
 				$page->set($name, $value);
 				$field->offsetUnset('_sanitizeValueString');

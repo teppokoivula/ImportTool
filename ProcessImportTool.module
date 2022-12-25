@@ -61,6 +61,7 @@ class ProcessImportTool extends Process implements Module {
 		$import_profile->name = 'import_profile';
 		$import_profile->label = $this->_('Import profile');
 		$import_profile->required = true;
+		$import_profile->attr('required', true);
 		if (count($this->config->ImportTool['profiles'])) {
 			foreach ($this->config->ImportTool['profiles'] as $profile_name => $profile_data) {
 				$import_profile->addOption($profile_name, $profile_data['label'] ?? $profile_name);
@@ -78,6 +79,7 @@ class ProcessImportTool extends Process implements Module {
 		$import_file->descriptionRows = 0;
 		$import_file->overwrite = true;
 		$import_file->required = true;
+		$import_file->attr('required', true);
 		$form->add($import_file);
 
 		/** @var InputfieldSubmit */

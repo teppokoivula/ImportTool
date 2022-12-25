@@ -82,7 +82,7 @@ The "sanitize" property can be any existing Sanitizer method name, or multiple c
 ```php
 				[
 					'name' => 'start_date',
-					'sanitize' => function($value) {
+					'sanitize' => function($value, $args) {
 						if (!empty($value) && is_string($value)) {
 							// remove extraneous day abbreviation (e.g. "mon 1.1.2023") from date
 							$value = preg_replace('/^[a-z]+ */i', '', $value);
@@ -92,12 +92,14 @@ The "sanitize" property can be any existing Sanitizer method name, or multiple c
 				],
 ```
 
+Args is an array of additional arguments and `$args['data']` contains the full data array for current row.
+
 If you need more control over how a field value gets stored and/or processed, you can provide a callback to the fields row. If provided, this overrides the built-in import page value method:
 
 ```php
 				[
 					'name' => 'start_time',
-					'callback' => function($page, $field_name, $value, $data) {
+					'callback' => function($page, $field_name, $value, $args) {
 						// time provided as a separate column, but we want to combine it with date
 						$page->start_date = implode(' ', array_filter([
 							date('j.n.Y', $page->getUnformatted('start_date')),
@@ -107,13 +109,13 @@ If you need more control over how a field value gets stored and/or processed, yo
 				],
 ```
 
-*Note: field name is technically optional in case a callback function is provided, since you can disregard it anyway in whatever code your callback contains.*
+Note: field name is technically optional in case a callback function is provided, since you can disregard it anyway in whatever code your callback contains. Args is the same as for the sanitize callback, i.e. an array of additional arguments with `$args['data']` containing the full data array for current row.
 
 In some cases aforementioned callback cannot be executed right away (e.g. in case repeater items are involved), in which case you can delay the execution to after the page has been saved by returning string "after_save" from the method when Page doesn't yet have an ID:
 
 ```php
 				[
-					'callback' => function($page, $field_name, $value, $data) {
+					'callback' => function($page, $field_name, $value, $args) {
 						if (!$page->id) return 'after_save';
 						if (empty(trim($value))) return;
 						$block = $page->getUnformatted('content_blocks')->getNew();

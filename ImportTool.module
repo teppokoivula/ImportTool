@@ -59,13 +59,17 @@ class ImportTool extends WireData implements Module {
 			$value = $data[$column] ?? null;
 			if ($value !== null && !empty($field['sanitize'])) {
 				if (is_callable($field['sanitize'])) {
-					$value = $field['sanitize']($value);
+					$value = $field['sanitize']($value, [
+						'data' => $data,
+					]);
 				} else {
 					$value = $this->sanitizer->sanitize($value, $field['sanitize']);
 				}
 			}
 			if (!empty($field['callback']) && is_callable($field['callback'])) {
-				$callback_result = $field['callback']($page, $field['name'] ?? '_' . $column, $value, $data);
+				$callback_result = $field['callback']($page, $field['name'] ?? '_' . $column, $value, [
+					'data' => $data,
+				]);
 				if ($callback_result === 'after_save') {
 					$import_data = $page->_import_tool_data;
 					$import_data[$field['name'] ?? '_' . $column] = $field['callback'];
@@ -111,7 +115,9 @@ class ImportTool extends WireData implements Module {
 		if ($page->id && !empty($page->_import_tool_data)) {
 			foreach ($page->_import_tool_data as $name => $value) {
 				if (is_callable($value)) {
-					$value($page, $name, $data[strpos($name, '_') === 0 ? substr($name, 1) : $name], $data);
+					$value($page, $name, $data[strpos($name, '_') === 0 ? substr($name, 1) : $name], [
+						'data' => $data,
+					]);
 				} else {
 					$page->set($name, $value);
 				}
@@ -184,11 +190,19 @@ class ImportTool extends WireData implements Module {
 			$value = $data[$column] ?? $page->get($field['name']);
 			if (is_callable($value)) {
 
-				$value($existing_page, $field['name'] ?? '_' . $column, $data[$column], $data);
+				$value($existing_page, $field['name'] ?? '_' . $column, $data[$column], [
+					'data' => $data,
+				]);
 
 			} else if ($value !== null && !empty($field['sanitize'])) {
 
-				$value = $this->sanitizer->sanitize($value, $field['sanitize']);
+				if (is_callable($field['sanitize'])) {
+					$value = $field['sanitize']($value, [
+						'data' => $data,
+					]);
+				} else {
+					$value = $this->sanitizer->sanitize($value, $field['sanitize']);
+				}
 
 				$field = $this->wire('fields')->get($field['name']);
 				$existing_value = $existing_page->get($field['name']);

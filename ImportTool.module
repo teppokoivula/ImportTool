@@ -51,14 +51,29 @@ class ImportTool extends WireData implements Module {
 			'template' => $this->profile['template'],
 			'parent' => $this->profile['parent'],
 		]);
+		$page->_import_tool_data = [];
 		$page->setTrackChanges(true);
 
 		foreach ($this->profile['fields'] as $column => $field) {
+			if (empty($field)) continue;
 			$value = $data[$column] ?? null;
 			if ($value !== null && !empty($field['sanitize'])) {
-				$value = $this->sanitizer->sanitize($value, $field['sanitize']);
+				if (is_callable($field['sanitize'])) {
+					$value = $field['sanitize']($value);
+				} else {
+					$value = $this->sanitizer->sanitize($value, $field['sanitize']);
+				}
 			}
-			$this->importPageValue($page, $field['name'], $value);
+			if (!empty($field['callback']) && is_callable($field['callback'])) {
+				$callback_result = $field['callback']($page, $field['name'] ?? '_' . $column, $value, $data);
+				if ($callback_result === 'after_save') {
+					$import_data = $page->_import_tool_data;
+					$import_data[$field['name'] ?? '_' . $column] = $field['callback'];
+					$page->_import_tool_data = $import_data;
+				}
+			} else {
+				$this->importPageValue($page, $field['name'], $value);
+			}
 		}
 
 		if (!$page->name) {
@@ -82,7 +97,7 @@ class ImportTool extends WireData implements Module {
 				]);
 				$page->save();
 			} else if ($on_duplicate === 'update_existing') {
-				$page = $this->updatePage($existing_page, $page);
+				$page = $this->updatePage($existing_page, $page, $data);
 			} else {
 				$this->message(sprintf(
 					$this->_('Skipping page with duplicate name "%s"'),
@@ -95,7 +110,11 @@ class ImportTool extends WireData implements Module {
 
 		if ($page->id && !empty($page->_import_tool_data)) {
 			foreach ($page->_import_tool_data as $name => $value) {
-				$page->set($name, $value);
+				if (is_callable($value)) {
+					$value($page, $name, $data[strpos($name, '_') === 0 ? substr($name, 1) : $name], $data);
+				} else {
+					$page->set($name, $value);
+				}
 			}
 			$page->save();
 		}
@@ -116,9 +135,9 @@ class ImportTool extends WireData implements Module {
 			if ($field->get('maxFiles') == 1) {
 				$value = array_shift($value);
 			}
-			$data = $page->_import_tool_data ?: [];
-			$data[$name] = $value;
-			$page->_import_tool_data = $data;
+			$import_data = $page->_import_tool_data;
+			$import_data[$name] = $value;
+			$page->_import_tool_data = $import_data;
 
 		} else if ($field->type instanceof FieldtypePage) {
 
@@ -146,7 +165,7 @@ class ImportTool extends WireData implements Module {
 		return true;
 	}
 
-	protected function updatePage(Page $existing_page, Page $page) {
+	protected function updatePage(Page $existing_page, Page $page, array $data) {
 
 		if ($existing_page->template->id !== $page->template->id) {
 			$this->error(sprintf(
@@ -163,17 +182,24 @@ class ImportTool extends WireData implements Module {
 
 		foreach ($this->profile['fields'] as $column => $field) {
 			$value = $data[$column] ?? $page->get($field['name']);
-			if ($value !== null && !empty($field['sanitize'])) {
-				$value = $this->sanitizer->sanitize($value, $field['sanitize']);
-			}
-			$field = $this->wire('fields')->get($field['name']);
-			$existing_value = $existing_page->get($field['name']);
-			$existing_page->set($field['name'], $value);
+			if (is_callable($value)) {
 
-			if ($field->type instanceof FieldtypePage) {
-				if (((string) $existing_value) === ((string) $page->get($field['name']))) {
-					$existing_page->untrackChange($field['name']);
+				$value($existing_page, $field['name'] ?? '_' . $column, $data[$column], $data);
+
+			} else if ($value !== null && !empty($field['sanitize'])) {
+
+				$value = $this->sanitizer->sanitize($value, $field['sanitize']);
+
+				$field = $this->wire('fields')->get($field['name']);
+				$existing_value = $existing_page->get($field['name']);
+				$existing_page->set($field['name'], $value);
+
+				if ($field->type instanceof FieldtypePage) {
+					if (((string) $existing_value) === ((string) $page->get($field['name']))) {
+						$existing_page->untrackChange($field['name']);
+					}
 				}
+
 			}
 		}
 

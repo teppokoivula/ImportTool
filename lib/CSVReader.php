@@ -8,7 +8,7 @@ class CSVReader extends Reader {
 	protected $file_pointer;
 	protected $settings;
 
-	public function construct(array $settings = []) {
+	public function __construct(array $settings = []) {
 		$this->settings = $settings;
 		ini_set('auto_detect_line_endings', $settings['auto_detect_line_endings'] ?? true);
 	}

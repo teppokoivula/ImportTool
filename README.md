@@ -15,7 +15,7 @@ Many parts of Import Tool have been derived from the Import Pages CSV module by 
 2) Add the "import-tool" permission to user roles that should have access to the Import Tool Admin GUI.
 3) Define import profile for your data. Currently this can only be done via $config->ImportTools array:
 
-```
+```php
 $config->ImportTools = [
 	'profiles' => [
 		'members' => [
@@ -64,4 +64,66 @@ Raimondo-Sophia,Sophia,Raimondo,2009-11-04,1602,Sophia.Raimondo@example.com
 Ader-Rosene,Rosene,Ader,2000-11-02,1602,Rosene.Ader@example.com
 ```
 
-4) Navigate to the Import Tool page in the Admin, select a profile and file, and hit "Submit".
+To skip over a column in the source data, include an empty array or `null` in the fields array:
+
+```php
+			'fields' => [
+				// first two columns from import file will be skipped
+				null,
+				null,
+				[
+					'name' => 'title',
+					'sanitize' => 'text',
+				],
+```
+
+The "sanitize" property can be any existing Sanitizer method name, or multiple comma-separated method names (this value gets passed to [$sanitizer->sanitize()](https://processwire.com/api/ref/sanitizer/sanitize/)). If built-in Sanitizer methods are not quite enough, you can also provide a callback:
+
+```php
+				[
+					'name' => 'start_date',
+					'sanitize' => function($value) {
+						if (!empty($value) && is_string($value)) {
+							// remove extraneous day abbreviation (e.g. "mon 1.1.2023") from date
+							$value = preg_replace('/^[a-z]+ */i', '', $value);
+						}
+						return wire()->sanitizer->date($value);
+					}
+				],
+```
+
+If you need more control over how a field value gets stored and/or processed, you can provide a callback to the fields row. If provided, this overrides the built-in import page value method:
+
+```php
+				[
+					'name' => 'start_time',
+					'callback' => function($page, $field_name, $value, $data) {
+						// time provided as a separate column, but we want to combine it with date
+						$page->start_date = implode(' ', array_filter([
+							date('j.n.Y', $page->getUnformatted('start_date')),
+							$value,
+						]));
+					}
+				],
+```
+
+*Note: field name is technically optional in case a callback function is provided, since you can disregard it anyway in whatever code your callback contains.*
+
+In some cases aforementioned callback cannot be executed right away (e.g. in case repeater items are involved), in which case you can delay the execution to after the page has been saved by returning string "after_save" from the method when Page doesn't yet have an ID:
+
+```php
+				[
+					'callback' => function($page, $field_name, $value, $data) {
+						if (!$page->id) return 'after_save';
+						if (empty(trim($value))) return;
+						$block = $page->getUnformatted('content_blocks')->getNew();
+						$block->setMatrixType('text_content_block');
+						$block->text_content = '<p>'
+							. implode('</p><p>', array_filter(preg_split("/\r\n|\r|\n/", $value)))
+							. '</p>';
+						$page->save('content_blocks');
+					},
+				],
+```
+
+4) Navigate to the Import Tool page in the Admin, select a profile and file, and hit "Import".

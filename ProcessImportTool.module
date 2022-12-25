@@ -83,7 +83,7 @@ class ProcessImportTool extends Process implements Module {
 		/** @var InputfieldSubmit */
 		$submit = $this->modules->get("InputfieldSubmit");
 		$submit->name = 'submit';
-		$submit->value = $this->_('Submit');
+		$submit->value = $this->_('Import');
 		$form->add($submit);
 
 		return $form;

@@ -1,0 +1,24 @@
+{
+    "name": "teppokoivula/import-tool",
+    "type": "pw-module",
+    "description": "General purpose ProcessWire module for importing content via predefined import profiles.",
+    "keywords": [
+	"module",
+	"plugin",
+	"processwire"
+    ],
+    "homepage": "https://github.com/teppokoivula/ImportTool",
+    "license": "MPL-2.0",
+    "authors": [
+        {
+            "name": "Teppo Koivula",
+            "homepage": "https://github.com/teppokoivula",
+            "email": "teppo.koivula@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=7.1",
+        "processwire/processwire": ">=3.0.200",
+        "wireframe-framework/processwire-composer-installer": "^1.0.0"
+    }
+}

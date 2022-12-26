@@ -44,8 +44,12 @@ class ProcessImportTool extends Process implements Module {
 			/** @var ImportTool */
 			$importTool = $this->modules->get('ImportTool');
 			$importTool->setProfile($import_profile_name);
-			if ($num_imported = $importTool->importFromFile($import_file)) {
-				$this->session->message(sprintf($this->_('Imported %d pages'), $num_imported));
+			if ($count = $importTool->importFromFile($import_file)) {
+				$this->session->message(implode(', ', array_filter([
+					sprintf($this->_('%d rows processed'), $count['imported']),
+					empty($count['imported']) ? null : sprintf($this->_('%d pages imported'), $count['imported']),
+					empty($count['updated']) ? null : sprintf($this->_('%d pages updated'), $count['updated']),
+				])));
 				$this->session->redirect($this->page->url, false);
 			}
 		}

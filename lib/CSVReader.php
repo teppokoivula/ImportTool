@@ -4,27 +4,38 @@ namespace ImportTool;
 
 class CSVReader extends Reader {
 
-	protected $filename;
-	protected $file_pointer;
 	protected $settings;
+	protected $file_pointer;
+	protected $filename;
+	protected $header = [];
 
 	public function __construct(array $settings = []) {
 		$this->settings = $settings;
 	}
 
 	public function open(string $filename): bool {
-		$this->filename = $filename;
 		$this->file_pointer = fopen($filename, 'r');
-		return $this->file_pointer !== false;
+		if ($this->file_pointer !== false) {
+			$this->filename = $filename;
+			$this->header = fgetcsv(
+				$this->file_pointer,
+				0,
+				$this->settings['delimiter'] ?? ',',
+				$this->settings['enclosure'] ?? '"'
+			);
+			return true;
+		}
+		return false;
 	}
 
-	public function getRow() {
-		return fgetcsv(
+	public function read() {
+		$line = fgetcsv(
 			$this->file_pointer,
 			0,
 			$this->settings['delimiter'] ?? ',',
 			$this->settings['enclosure'] ?? '"'
 		);
+		return $line !== false && !empty($this->header) ? array_combine($this->header, $line) : $line;
 	}
 
 	public function close() {

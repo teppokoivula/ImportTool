@@ -22,25 +22,25 @@ $config->ImportTools = [
 			'label' => 'Members',
 			'template' => 'member',
 			'parent' => 1282,
-			'fields' => [
-				[
-					'name' => 'title',
+			'values' => [
+				'title' => [
+					'field' => 'title',
 					'sanitize' => 'text',
 				],
-				[
-					'name' => 'first_name',
+				'first_name' => [
+					'field' => 'first_name',
 					'sanitize' => 'text',
 				],
-				[
-					'name' => 'last_name',
+				'last_name' => [
+					'field' => 'last_name',
 					'sanitize' => 'text',
 				],
-				[
-					'name' => 'date_of_birth',
+				'date_of_birth' => [
+					'field' => 'date_of_birth',
 					'sanitize' => 'date',
 				],
-				[
-					'name' => 'email',
+				'email' => [
+					'field' => 'email',
 					'sanitize' => 'email',
 				],
 			],
@@ -64,15 +64,10 @@ Raimondo-Sophia,Sophia,Raimondo,2009-11-04,1602,Sophia.Raimondo@example.com
 Ader-Rosene,Rosene,Ader,2000-11-02,1602,Rosene.Ader@example.com
 ```
 
-To skip over a column in the source data, include an empty array or `null` in the fields array:
+If import file column name is an exact match of a local field name, "field" can be omitted:
 
 ```php
-			'fields' => [
-				// first two columns from import file will be skipped
-				null,
-				null,
-				[
-					'name' => 'title',
+				'title' => [
 					'sanitize' => 'text',
 				],
 ```
@@ -80,8 +75,8 @@ To skip over a column in the source data, include an empty array or `null` in th
 The "sanitize" property can be any existing Sanitizer method name, or multiple comma-separated method names (this value gets passed to [$sanitizer->sanitize()](https://processwire.com/api/ref/sanitizer/sanitize/)). If built-in Sanitizer methods are not quite enough, you can also provide a callback:
 
 ```php
-				[
-					'name' => 'start_date',
+				'start_date' => [
+					'field' => 'start_date',
 					'sanitize' => function($value, $args) {
 						if (!empty($value) && is_string($value)) {
 							// remove extraneous day abbreviation (e.g. "mon 1.1.2023") from date
@@ -94,12 +89,11 @@ The "sanitize" property can be any existing Sanitizer method name, or multiple c
 
 Args is an array of additional arguments and `$args['data']` contains the full data array for current row.
 
-If you need more control over how a field value gets stored and/or processed, you can provide a callback to the fields row. If provided, this overrides the built-in import page value method:
+If you need more control over how a field value gets stored and/or processed, you can provide a callback. If provided, this overrides the built-in import page value method:
 
 ```php
 				[
-					'name' => 'start_time',
-					'callback' => function($page, $field_name, $value, $args) {
+					'callback' => function($page, $field, $value, $args) {
 						// time provided as a separate column, but we want to combine it with date
 						$page->start_date = implode(' ', array_filter([
 							date('j.n.Y', $page->getUnformatted('start_date')),
@@ -109,13 +103,13 @@ If you need more control over how a field value gets stored and/or processed, yo
 				],
 ```
 
-Note: field name is technically optional in case a callback function is provided, since you can disregard it anyway in whatever code your callback contains. Args is the same as for the sanitize callback, i.e. an array of additional arguments with `$args['data']` containing the full data array for current row.
+Note: both field and column are technically optional in case a callback function is provided, since you can disregard them anyway in your callback function. Args is the same as for the sanitize callback, i.e. an array of additional arguments with `$args['data']` containing the full data array for current row.
 
 In some cases aforementioned callback cannot be executed right away (e.g. in case repeater items are involved), in which case you can delay the execution to after the page has been saved by returning string "after_save" from the method when Page doesn't yet have an ID:
 
 ```php
 				[
-					'callback' => function($page, $field_name, $value, $args) {
+					'callback' => function($page, $field, $value, $args) {
 						if (!$page->id) return 'after_save';
 						if (empty(trim($value))) return;
 						$block = $page->getUnformatted('content_blocks')->getNew();

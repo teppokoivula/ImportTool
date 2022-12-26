@@ -33,9 +33,8 @@ class ImportTool extends WireData implements Module {
 			'row_num' => 0,
 		];
 
-		while ($row = $reader->getRow()) {
+		while ($row = $reader->read()) {
 			++$count['row_num'];
-			if ($count['row_num'] === 1) continue;
 			if (empty($row) || count($row) == 1 && empty($row[0])) continue;
 			$imported_page = $this->importPage($row);
 			if ($imported_page) {
@@ -59,29 +58,29 @@ class ImportTool extends WireData implements Module {
 		$page->_import_tool_data = [];
 		$page->setTrackChanges(true);
 
-		foreach ($this->profile['fields'] as $column => $field) {
-			if (empty($field)) continue;
-			$value = $data[$column] ?? null;
-			if ($value !== null && !empty($field['sanitize'])) {
-				if (is_callable($field['sanitize'])) {
-					$value = $field['sanitize']($value, [
+		foreach ($this->profile['values'] as $column_name => $column) {
+			if (empty($column)) continue;
+			$value = $data[$column_name] ?? null;
+			if ($value !== null && !empty($column['sanitize'])) {
+				if (!is_string($column['sanitize']) && is_callable($column['sanitize'])) {
+					$value = $column['sanitize']($value, [
 						'data' => $data,
 					]);
 				} else {
-					$value = $this->sanitizer->sanitize($value, $field['sanitize']);
+					$value = $this->sanitizer->sanitize($value, $column['sanitize']);
 				}
 			}
-			if (!empty($field['callback']) && is_callable($field['callback'])) {
-				$callback_result = $field['callback']($page, $field['name'] ?? '_' . $column, $value, [
+			if (!empty($column['callback']) && is_callable($column['callback'])) {
+				$callback_result = $column['callback']($page, $column['field'] ?? $column_name ?? '_' . $column_name, $value, [
 					'data' => $data,
 				]);
 				if ($callback_result === 'after_save') {
 					$import_data = $page->_import_tool_data;
-					$import_data[$field['name'] ?? '_' . $column] = $field['callback'];
+					$import_data[$column['field'] ?? $column_name ?? '_import_tool_field_' . $column_name] = $column['callback'];
 					$page->_import_tool_data = $import_data;
 				}
 			} else {
-				$this->importPageValue($page, $field['name'], $value);
+				$this->importPageValue($page, $column['field'] ?? $column_name, $value);
 			}
 		}
 
@@ -123,13 +122,13 @@ class ImportTool extends WireData implements Module {
 		}
 
 		if ($page->id && !empty($page->_import_tool_data)) {
-			foreach ($page->_import_tool_data as $name => $value) {
+			foreach ($page->_import_tool_data as $field => $value) {
 				if (is_callable($value)) {
-					$value($page, $name, $data[strpos($name, '_') === 0 ? substr($name, 1) : $name], [
+					$value($page, $field, $data[strpos($field, '_import_tool_field_') === 0 ? substr($field, 20) : $field], [
 						'data' => $data,
 					]);
 				} else {
-					$page->set($name, $value);
+					$page->set($field, $value);
 				}
 			}
 			$page->save();
@@ -196,31 +195,31 @@ class ImportTool extends WireData implements Module {
 		/** @var array */
 		$data = $page->_import_tool_data;
 
-		foreach ($this->profile['fields'] as $column => $field) {
-			$value = $data[$column] ?? $page->get($field['name']);
+		foreach ($this->profile['values'] as $column_name => $column) {
+			$value = $data[$column_name] ?? $page->get($column['field'] ?? $column_name);
 			if (is_callable($value)) {
 
-				$value($existing_page, $field['name'] ?? '_' . $column, $data[$column], [
+				$value($existing_page, $column['field'] ?? $column_name ?? '_import_tool_field_' . $column_name, $data[$column_name], [
 					'data' => $data,
 				]);
 
-			} else if ($value !== null && !empty($field['sanitize'])) {
+			} else if ($value !== null && !empty($column['sanitize'])) {
 
-				if (is_callable($field['sanitize'])) {
-					$value = $field['sanitize']($value, [
+				if (is_callable($column['sanitize'])) {
+					$value = $column['sanitize']($value, [
 						'data' => $data,
 					]);
 				} else {
-					$value = $this->sanitizer->sanitize($value, $field['sanitize']);
+					$value = $this->sanitizer->sanitize($value, $column['sanitize']);
 				}
 
-				$field = $this->wire('fields')->get($field['name']);
-				$existing_value = $existing_page->get($field['name']);
-				$existing_page->set($field['name'], $value);
+				$field = $this->wire('fields')->get($column['field'] ?? $column_name);
+				$existing_value = $existing_page->get($field->name);
+				$existing_page->set($field->name, $value);
 
 				if ($field->type instanceof FieldtypePage) {
-					if (((string) $existing_value) === ((string) $page->get($field['name']))) {
-						$existing_page->untrackChange($field['name']);
+					if (((string) $existing_value) === ((string) $page->get($field->name))) {
+						$existing_page->untrackChange($field->name);
 					}
 				}
 

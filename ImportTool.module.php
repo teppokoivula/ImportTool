@@ -1,7 +1,5 @@
 <?php namespace ProcessWire;
 
-use ImportTool\CSVReader;
-
 class ImportTool extends WireData implements Module {
 
 	public $profile;
@@ -24,7 +22,7 @@ class ImportTool extends WireData implements Module {
 
 	public function importFromFile(string $filename): array {
 
-		$reader = new CSVReader($this->profile['reader_settings'] ?? []);
+		$reader = new \ImportTool\CSVReader($this->profile['reader_settings'] ?? []);
 		$reader->open($filename);
 
 		$count = [
@@ -92,11 +90,28 @@ class ImportTool extends WireData implements Module {
 			return false;
 		}
 
-		$existing_page = $this->pages->get([
-			'parent_id' => $this->profile['parent'],
-			'name' => $page->name,
-		]);
-		if ($existing_page->id) {
+		$existing_page = null;
+		if (!empty($this->profile['is_duplicate']) && is_string($this->profile['is_duplicate'])) {
+			$existing_page_selector = $this->profile['is_duplicate'];
+			if (strpos($existing_page_selector, '{') !== false) {
+				preg_match_all('/{(.*?)}/', $existing_page_selector, $tags);
+				$tags = empty($tags) ? [] : array_filter($tags[1]);
+				foreach ($tags as $tag) {
+					$existing_page_selector = str_replace(
+						'{' . $tag . '}',
+						wire()->sanitizer->selectorValue($page->get($tag)),
+						$existing_page_selector
+					);
+				}
+			}
+			$existing_page = $this->pages->get($existing_page_selector);
+		} else {
+			$existing_page = $this->pages->get([
+				'parent_id' => $this->profile['parent'],
+				'name' => $page->name,
+			]);
+		}
+		if ($existing_page && $existing_page->id) {
 			$on_duplicate = $this->profile['on_duplicate'] ?? 'continue';
 			if ($on_duplicate === 'make_unique') {
 				$page->name = $this->pages->names()->uniquePageName([
@@ -193,36 +208,36 @@ class ImportTool extends WireData implements Module {
 		}
 
 		/** @var array */
-		$data = $page->_import_tool_data;
+		$import_data = $page->_import_tool_data;
 
 		foreach ($this->profile['values'] as $column_name => $column) {
-			$value = $data[$column_name] ?? $page->get($column['field'] ?? $column_name);
-			if (is_callable($value)) {
 
-				$value($existing_page, $column['field'] ?? $column_name ?? '_import_tool_field_' . $column_name, $data[$column_name], [
-					'data' => $data,
-				]);
-
-			} else if ($value !== null && !empty($column['sanitize'])) {
-
-				if (is_callable($column['sanitize'])) {
-					$value = $column['sanitize']($value, [
+			$value = null;
+			if (isset($import_data[$column_name])) {
+				$value = $import_data[$column_name];
+			} else if (isset($column['callback'])) {
+				$column['callback'](
+					$existing_page,
+					$column['field'] ?? $column_name ?? '_import_tool_field_' . $column_name,
+					$data[$column_name],
+					[
 						'data' => $data,
-					]);
-				} else {
-					$value = $this->sanitizer->sanitize($value, $column['sanitize']);
+					]
+				);
+				continue;
+			} else {
+				$value = $page->get($column['field'] ?? $column_name);
+			}
+
+			$field = $this->wire('fields')->get($column['field'] ?? $column_name);
+			$existing_value = $field->name ? $existing_page->get($field->name) : null;
+
+			$existing_page->set($field->name ?: ($column['field'] ?? $column_name), $value);
+
+			if ($field->type instanceof FieldtypePage) {
+				if (((string) $existing_value) === ((string) $page->get($field->name))) {
+					$existing_page->untrackChange($field->name);
 				}
-
-				$field = $this->wire('fields')->get($column['field'] ?? $column_name);
-				$existing_value = $existing_page->get($field->name);
-				$existing_page->set($field->name, $value);
-
-				if ($field->type instanceof FieldtypePage) {
-					if (((string) $existing_value) === ((string) $page->get($field->name))) {
-						$existing_page->untrackChange($field->name);
-					}
-				}
-
 			}
 		}
 

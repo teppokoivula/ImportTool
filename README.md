@@ -122,6 +122,14 @@ In some cases aforementioned callback cannot be executed right away (e.g. in cas
 				],
 ```
 
+If page with identical name already exists under same parent, it will be considered a duplicate, in which case the "on_duplicate" behaviour will kick in and make the name unique ("make_unique"), update existing page ("update_existing"), or continue to next item ("continue"). If you want to provide more specific rules for detecting duplicates, you can do this via the "is_duplicate" option:
+
+```php
+			'is_duplicate' => 'parent={page.parent}, start_date={page.start_date}, title={page.title}',
+```
+
+Note, though, that you should only use the "is_duplicate" option to specify more specific rules. If a duplicate isn't matched, there may be an error when new page is saved.
+
 You can add notes for import profiles. These will be displayed in the Import Tool Admin GUI once you select said import profile:
 
 ```php

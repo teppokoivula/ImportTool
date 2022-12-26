@@ -33,6 +33,8 @@ class ProcessImportTool extends Process implements Module {
 			return false;
 		}
 
+		$this->session->setFor('ImportTool', 'import_profile_name', $import_profile_name);
+
 		$import_file_name = 'import-' . time() . '-' . $this->user->id . '.csv';
 		$import_file_path = $this->getProcessPage()->filesManager()->path();
 
@@ -46,7 +48,7 @@ class ProcessImportTool extends Process implements Module {
 			$importTool->setProfile($import_profile_name);
 			if ($count = $importTool->importFromFile($import_file)) {
 				$this->session->message(implode(', ', array_filter([
-					sprintf($this->_('%d rows processed'), $count['imported']),
+					sprintf($this->_('%d rows processed'), $count['row_num']),
 					empty($count['imported']) ? null : sprintf($this->_('%d pages imported'), $count['imported']),
 					empty($count['updated']) ? null : sprintf($this->_('%d pages updated'), $count['updated']),
 				])));
@@ -85,6 +87,11 @@ JAVASCRIPT);
 			}
 		}
 		$form->add($import_profile);
+
+		$import_profile_name = $this->session->getfor('ImportTool', 'import_profile_name');
+		if ($import_profile_name) {
+			$import_profile->value = $import_profile_name;
+		}
 
 		/** @var InputfieldFile */
 		$import_file = $this->modules->get('InputfieldFile');

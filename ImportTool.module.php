@@ -30,6 +30,7 @@ class ImportTool extends WireData implements Module {
 			'updated' => 0,
 			'skipped' => 0,
 			'row_num' => 0,
+			'time' => Debug::timer(),
 		];
 
 		while ($row = $reader->read()) {
@@ -42,8 +43,8 @@ class ImportTool extends WireData implements Module {
 		}
 
 		$reader->close();
-
 		$this->files->unlink($filename);
+		$count['time'] = Debug::timer($count['time']);
 
 		return $count;
 	}
@@ -69,7 +70,7 @@ class ImportTool extends WireData implements Module {
 					$value = $this->sanitizer->sanitize($value, $column['sanitize']);
 				}
 			}
-			if (!empty($column['callback']) && is_callable($column['callback'])) {
+			if (!empty($column['callback']) && $this->isCallable($column['callback'])) {
 				$callback_result = $column['callback']($page, $column['field'] ?? $column_name ?? '_' . $column_name, $value, [
 					'data' => $data,
 				]);
@@ -141,7 +142,7 @@ class ImportTool extends WireData implements Module {
 
 		if ($page->id && !empty($page->_import_tool_data)) {
 			foreach ($page->_import_tool_data as $field => $value) {
-				if (is_callable($value)) {
+				if ($this->isCallable($value)) {
 					$value($page, $field, $data[strpos($field, '_import_tool_field_') === 0 ? substr($field, 20) : $field], [
 						'data' => $data,
 					]);
@@ -218,7 +219,19 @@ class ImportTool extends WireData implements Module {
 
 			$value = null;
 			if (isset($import_data[$column_name])) {
-				$value = $import_data[$column_name];
+				if ($this->isCallable($import_data[$column_name])) {
+					$import_data[$column_name](
+						$existing_page,
+						$column['field'] ?? $column_name ?? '_import_tool_field_' . $column_name,
+						$data[$column_name],
+						[
+							'data' => $data,
+						]
+					);
+					continue;
+				} else {
+					$value = $import_data[$column_name];
+				}
 			} else if (isset($column['callback'])) {
 				$column['callback'](
 					$existing_page,
@@ -233,8 +246,8 @@ class ImportTool extends WireData implements Module {
 				$value = $page->get($column['field'] ?? $column_name);
 			}
 
-			$field = $this->wire('fields')->get($column['field'] ?? $column_name);
-			$existing_value = $field->name ? $existing_page->get($field->name) : null;
+			$field = $this->wire()->fields->get($column['field'] ?? $column_name);
+			$existing_value = $field && $field->name ? $existing_page->get($field->name) : null;
 
 			$existing_page->set($field->name ?: ($column['field'] ?? $column_name), $value);
 
@@ -247,6 +260,10 @@ class ImportTool extends WireData implements Module {
 
 		$existing_page->save();
 		return $existing_page;
+	}
+
+	protected function isCallable($function) {
+		return is_callable($function) && (!is_object($function) || $function instanceof \Closure);
 	}
 
 }

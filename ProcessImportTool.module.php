@@ -91,7 +91,13 @@ JAVASCRIPT);
 
 		$import_profile_name = $this->session->getfor('ImportTool', 'import_profile_name');
 		if ($import_profile_name) {
-			$import_profile->value = $import_profile_name;
+			$import_profile->appendMarkup(<<<HTML
+<script>
+var importProfile = document.getElementById('Inputfield_import_profile')
+importProfile.value = '$import_profile_name'
+importProfile.dispatchEvent(new Event('change'))
+</script>
+HTML);
 		}
 
 		/** @var InputfieldFile */

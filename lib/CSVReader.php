@@ -10,7 +10,6 @@ class CSVReader extends Reader {
 
 	public function __construct(array $settings = []) {
 		$this->settings = $settings;
-		ini_set('auto_detect_line_endings', $settings['auto_detect_line_endings'] ?? true);
 	}
 
 	public function open(string $filename): bool {

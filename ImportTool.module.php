@@ -28,6 +28,7 @@ class ImportTool extends WireData implements Module {
 		$count = [
 			'imported' => 0,
 			'updated' => 0,
+			'skipped' => 0,
 			'row_num' => 0,
 		];
 
@@ -36,7 +37,7 @@ class ImportTool extends WireData implements Module {
 			if (empty($row) || count($row) == 1 && empty($row[0])) continue;
 			$imported_page = $this->importPage($row);
 			if ($imported_page) {
-				++$count[$imported_page->_import_tool_existing_page ? 'updated' : 'imported'];
+				++$count[$imported_page->_import_tool_action];
 			}
 		}
 
@@ -119,18 +120,20 @@ class ImportTool extends WireData implements Module {
 					'parent' => $this->pages->get($this->profile['parent']),
 				]);
 				$page->save();
+				$page->_import_tool_action = 'imported';
 			} else if ($on_duplicate === 'update_existing') {
 				$page = $this->updatePage($existing_page, $page, $data);
 				if (!$page) {
 					return false;
 				}
-				$page->_import_tool_existing_page = true;
+				$page->_import_tool_action = 'updated';
 			} else {
 				$this->message(sprintf(
 					$this->_('Skipping page with duplicate name "%s"'),
 					$page->name
 				));
-				return false;
+				$page->_import_tool_action = 'skipped';
+				return $page;
 			}
 		} else {
 			$page->save();
@@ -149,6 +152,7 @@ class ImportTool extends WireData implements Module {
 			$page->save();
 		}
 
+		$page->_import_tool_action = $page->_import_tool_action ?: 'imported';
 		return $page;
 	}
 

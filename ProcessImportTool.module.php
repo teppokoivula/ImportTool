@@ -51,6 +51,7 @@ class ProcessImportTool extends Process implements Module {
 					sprintf($this->_('%d rows processed'), $count['row_num']),
 					empty($count['imported']) ? null : sprintf($this->_('%d pages imported'), $count['imported']),
 					empty($count['updated']) ? null : sprintf($this->_('%d pages updated'), $count['updated']),
+					empty($count['skipped']) ? null : sprintf($this->_('%d pages skipped'), $count['skipped']),
 				])));
 				$this->session->redirect($this->page->url, false);
 			}

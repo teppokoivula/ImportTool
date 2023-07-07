@@ -1,6 +1,6 @@
 {
 	"title": "Import Tool",
-	"version": "0.0.13",
+	"version": "0.0.14",
 	"summary": "General purpose tool for importing content via predefined import profiles.",
 	"author": "Teppo Koivula",
 	"icon": "table",

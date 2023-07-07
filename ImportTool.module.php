@@ -236,7 +236,7 @@ class ImportTool extends WireData implements Module {
 					$import_data[$column_name](
 						$existing_page,
 						$column['field'] ?? $column_name ?? '_import_tool_field_' . $column_name,
-						$data[$column_name],
+						$data[$column_name] ?? '',
 						[
 							'data' => $data,
 						]

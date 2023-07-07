@@ -44,6 +44,7 @@ $config->ImportTools = [
 					'sanitize' => 'email',
 				],
 			],
+			'limit' => 10,
 			'on_duplicate' => 'make_unique',
 			'on_missing_page_ref' => 'create',
 			'reader_settings' => [

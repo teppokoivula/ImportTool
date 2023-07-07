@@ -38,7 +38,6 @@ class ImportTool extends WireData implements Module {
 
 		while ($row = $reader->read()) {
 			++$count['row_num'];
-			$this->message('Row ' . $count['row_num'] . ': ' . json_encode($row));
 			if (empty($row) || count($row) == 1 && empty($row[0])) {
 				continue;
 			}

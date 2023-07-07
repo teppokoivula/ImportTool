@@ -148,7 +148,7 @@ class ImportTool extends WireData implements Module {
 		if ($page->id && !empty($page->_import_tool_data)) {
 			foreach ($page->_import_tool_data as $field => $value) {
 				if ($this->isCallable($value)) {
-					$value($page, $field, $data[strpos($field, '_import_tool_field_') === 0 ? substr($field, 20) : $field], [
+					$value($page, $field, $data[strpos($field, '_import_tool_field_') === 0 ? substr($field, 20) : $field] ?? '', [
 						'data' => $data,
 					]);
 				} else {

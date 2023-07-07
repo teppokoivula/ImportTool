@@ -44,9 +44,9 @@ class ImportTool extends WireData implements Module {
 			$imported_page = $this->importPage($row);
 			if ($imported_page) {
 				++$count[$imported_page->_import_tool_action];
-			}
-			if (!empty($this->profile['limit']) && $count['imported'] > $this->profile['limit']) {
-				break;
+				if (!empty($this->profile['limit']) && $count['imported'] >= $this->profile['limit']) {
+					break;
+				}
 			}
 		}
 

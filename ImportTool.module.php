@@ -101,6 +101,7 @@ class ImportTool extends WireData implements Module {
 		}
 
 		$existing_page = null;
+
 		if (!empty($this->profile['is_duplicate']) && is_string($this->profile['is_duplicate'])) {
 			$existing_page_selector = $this->profile['is_duplicate'];
 			if (strpos($existing_page_selector, '{') !== false) {
@@ -121,6 +122,7 @@ class ImportTool extends WireData implements Module {
 				'name' => $page->name,
 			]);
 		}
+
 		if ($existing_page && $existing_page->id) {
 			$on_duplicate = $this->profile['on_duplicate'] ?? 'continue';
 			if ($on_duplicate === 'make_unique') {
@@ -169,7 +171,7 @@ class ImportTool extends WireData implements Module {
 
 		if ($name === 'name') {
 
-			$page->name = $value;
+			$page->name = $this->sanitizer->pageName($value, Sanitizer::translate);
 
 		} else {
 

@@ -264,9 +264,9 @@ class ImportTool extends WireData implements Module {
 			$field = $this->wire()->fields->get($name);
 			$existing_value = $field && $field->name ? $existing_page->get($field->name) : null;
 
-			$existing_page->set($field->name ?: $name, $value);
+			$existing_page->set($field && $field->name ? $field->name : $name, $value);
 
-			if ($field->type instanceof FieldtypePage) {
+			if ($field && $field->type instanceof FieldtypePage) {
 				if (((string) $existing_value) === ((string) $page->get($field->name))) {
 					$existing_page->untrackChange($field->name);
 				}

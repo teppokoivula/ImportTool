@@ -1,6 +1,6 @@
 {
 	"title": "Process Import Tool",
-	"version": "0.0.11",
+	"version": "0.0.12",
 	"summary": "Admin interface for the Import Tool module.",
 	"author": "Teppo Koivula",
 	"icon": "table",

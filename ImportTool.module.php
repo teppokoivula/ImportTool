@@ -117,10 +117,12 @@ class ImportTool extends WireData implements Module {
 			}
 			$existing_page = $this->pages->get($existing_page_selector);
 		} else {
-			$existing_page = $this->pages->get([
-				'parent_id' => $this->profile['parent'],
-				'name' => $page->name,
-			]);
+			$existing_page = $this->pages->get(implode(', ', [
+				'parent_id' => 'parent_id=' . (int) $this->profile['parent'],
+				'name' => 'name=' . $this->sanitizer->selectorValue($page->name, [
+					'maxLength' => 128,
+				]),
+			]));
 		}
 
 		if ($existing_page && $existing_page->id) {

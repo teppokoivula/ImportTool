@@ -35,7 +35,8 @@ class ProcessImportTool extends Process implements Module {
 
 		$this->session->setFor('ImportTool', 'import_profile_name', $import_profile_name);
 
-		$import_file_name = 'import-' . time() . '-' . $this->user->id . '.csv';
+		$import_file_ext = pathinfo($import_file, PATHINFO_EXTENSION);
+		$import_file_name = 'import-' . time() . '-' . $this->user->id . '.' . $import_file_ext;
 		$import_file_path = $this->getProcessPage()->filesManager()->path();
 
 		$import_file = $import_file->first();
@@ -105,7 +106,7 @@ HTML);
 		$import_file->name = 'import_file';
 		$import_file->label = $this->_('Import file');
 		$import_file->icon = 'file-text';
-		$import_file->extensions = 'csv txt';
+		$import_file->extensions = 'csv txt json';
 		$import_file->maxFiles = 1;
 		$import_file->descriptionRows = 0;
 		$import_file->overwrite = true;

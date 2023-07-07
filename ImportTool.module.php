@@ -22,7 +22,10 @@ class ImportTool extends WireData implements Module {
 
 	public function importFromFile(string $filename): array {
 
-		$reader = new \ImportTool\CSVReader($this->profile['reader_settings'] ?? []);
+		$file_ext = pathinfo($filename, PATHINFO_EXTENSION);
+		$reader = $file_ext === 'csv'
+			? new \ImportTool\CSVReader($this->profile['reader_settings'] ?? [])
+			: new \ImportTool\JSONReader($this->profile['reader_settings'] ?? []);
 		$reader->open($filename);
 
 		$count = [
@@ -35,7 +38,10 @@ class ImportTool extends WireData implements Module {
 
 		while ($row = $reader->read()) {
 			++$count['row_num'];
-			if (empty($row) || count($row) == 1 && empty($row[0])) continue;
+			$this->message('Row ' . $count['row_num'] . ': ' . json_encode($row));
+			if (empty($row) || count($row) == 1 && empty($row[0])) {
+				continue;
+			}
 			$imported_page = $this->importPage($row);
 			if ($imported_page) {
 				++$count[$imported_page->_import_tool_action];
@@ -159,41 +165,49 @@ class ImportTool extends WireData implements Module {
 
 	protected function importPageValue(Page $page, $name, $value): bool {
 
-		$field = $this->fields->get($name);
-		if (!$field) return false;
+		if ($name === 'name') {
 
-		if ($field->type instanceof FieldtypeFile) {
-
-			// split delimeted data to an array
-			$value = preg_split('/[\r\n\t|]+/', trim($value));
-			if ($field->get('maxFiles') == 1) {
-				$value = array_shift($value);
-			}
-			$import_data = $page->_import_tool_data;
-			$import_data[$name] = $value;
-			$page->_import_tool_data = $import_data;
-
-		} else if ($field->type instanceof FieldtypePage) {
-
-			$on_missing_page_ref = $this->profile['on_missing_page_ref'] ?? null;
-			if ($on_missing_page_ref === 'create') {
-				$field->setQuietly('_sanitizeValueString', 'create');
-				$page->set($name, $value);
-				$field->offsetUnset('_sanitizeValueString');
-			} else {
-				$page->set($name, $value);
-			}
-
-		} else if ($name === 'title') {
-
-			$page->set($name, $value);
-			if (!$page->name) {
-				$page->name = $this->sanitizer->pageName($value, Sanitizer::translate);
-			}
+			$page->name = $value;
 
 		} else {
 
-			$page->set($name, $value);
+			$field = $this->fields->get($name);
+			if (!$field) return false;
+
+			if ($field->type instanceof FieldtypeFile) {
+
+				// split delimeted data to an array
+				$value = preg_split('/[\r\n\t|]+/', trim($value));
+				if ($field->get('maxFiles') == 1) {
+					$value = array_shift($value);
+				}
+				$import_data = $page->_import_tool_data;
+				$import_data[$name] = $value;
+				$page->_import_tool_data = $import_data;
+
+			} else if ($field->type instanceof FieldtypePage) {
+
+				$on_missing_page_ref = $this->profile['on_missing_page_ref'] ?? null;
+				if ($on_missing_page_ref === 'create') {
+					$field->setQuietly('_sanitizeValueString', 'create');
+					$page->set($name, $value);
+					$field->offsetUnset('_sanitizeValueString');
+				} else {
+					$page->set($name, $value);
+				}
+
+			} else if ($name === 'title') {
+
+				$page->set($name, $value);
+				if (!$page->name) {
+					$page->name = $this->sanitizer->pageName($value, Sanitizer::translate);
+				}
+
+			} else {
+
+				$page->set($name, $value);
+
+			}
 
 		}
 
@@ -246,10 +260,12 @@ class ImportTool extends WireData implements Module {
 				$value = $page->get($column['field'] ?? $column_name);
 			}
 
-			$field = $this->wire()->fields->get($column['field'] ?? $column_name);
+			$name = $column['field'] ?? $column_name;
+
+			$field = $this->wire()->fields->get($name);
 			$existing_value = $field && $field->name ? $existing_page->get($field->name) : null;
 
-			$existing_page->set($field->name ?: ($column['field'] ?? $column_name), $value);
+			$existing_page->set($field->name ?: $name, $value);
 
 			if ($field->type instanceof FieldtypePage) {
 				if (((string) $existing_value) === ((string) $page->get($field->name))) {

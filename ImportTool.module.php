@@ -126,6 +126,7 @@ class ImportTool extends WireData implements Module {
 				'name' => 'name=' . $this->sanitizer->selectorValue($page->name, [
 					'maxLength' => 128,
 				]),
+				'include=all',
 			]));
 		}
 

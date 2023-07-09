@@ -2,7 +2,7 @@
 
 class ImportTool extends WireData implements Module {
 
-	public $profile;
+	protected $profile;
 
 	public function init() {
 		/** @var WireClassLoader */
@@ -78,13 +78,17 @@ class ImportTool extends WireData implements Module {
 					$value = $this->sanitizer->sanitize($value, $column['sanitize']);
 				}
 			}
-			if (!empty($column['callback']) && $this->isCallable($column['callback'])) {
-				$callback_result = $column['callback']($page, $column['field'] ?? $column_name ?? '_' . $column_name, $value, [
+			$callback = empty($column['callback']) ? null : $column['callback'];
+			if (is_string($callback) && strpos($column['callback'], 'ImportTool.') === 0) {
+				$callback = $this->getDotArray($column['callback']);
+			}
+			if ($this->isCallable($callback)) {
+				$callback_result = $callback($page, $column['field'] ?? $column_name ?? '_' . $column_name, $value, [
 					'data' => $data,
 				]);
 				if ($callback_result === 'after_save') {
 					$import_data = $page->_import_tool_data;
-					$import_data[$column['field'] ?? $column_name ?? '_import_tool_field_' . $column_name] = $column['callback'];
+					$import_data[$column['field'] ?? $column_name ?? '_import_tool_field_' . $column_name] = $callback;
 					$page->_import_tool_data = $import_data;
 				}
 			} else {
@@ -174,6 +178,10 @@ class ImportTool extends WireData implements Module {
 		if ($name === 'name') {
 
 			$page->name = $this->sanitizer->pageName($value, Sanitizer::translate);
+
+		} else if ($name === 'status') {
+
+			$page->status = $value;
 
 		} else {
 
@@ -284,8 +292,26 @@ class ImportTool extends WireData implements Module {
 		return $existing_page;
 	}
 
-	protected function isCallable($function) {
-		return is_callable($function) && (!is_object($function) || $function instanceof \Closure);
+	protected function isCallable($function): bool {
+		return $function !== null
+			&& is_callable($function)
+			&& (!is_object($function) || $function instanceof \Closure);
+	}
+
+	protected function getDotArray(string $key) {
+		if (strpos($key, 'ImportTool.') === 0) {
+			$key = substr($key, 11);
+		}
+		$parts = explode('.', $key);
+		foreach ($parts as $index => $part) {
+			$current_item = $index === 0
+				? ($this->config->ImportTool[$part] ?? null)
+				: ($current_item[$part] ?? null);
+			if ($current_item === null) {
+				return null;
+			}
+		}
+		return $current_item;
 	}
 
 }

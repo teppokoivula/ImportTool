@@ -262,14 +262,20 @@ class ImportTool extends WireData implements Module {
 					$value = $import_data[$column_name];
 				}
 			} else if (isset($column['callback'])) {
-				$column['callback'](
-					$existing_page,
-					$column['field'] ?? $column_name ?? '_import_tool_field_' . $column_name,
-					$data[$column_name],
-					[
-						'data' => $data,
-					]
-				);
+				$callback = empty($column['callback']) ? null : $column['callback'];
+				if (is_string($callback) && strpos($column['callback'], 'ImportTool.') === 0) {
+					$callback = $this->getDotArray($column['callback']);
+				}
+				if ($this->isCallable($callback)) {
+					$callback(
+						$existing_page,
+						$column['field'] ?? $column_name ?? '_import_tool_field_' . $column_name,
+						$data[$column_name],
+						[
+							'data' => $data,
+						]
+					);
+				}
 				continue;
 			} else {
 				$value = $page->get($column['field'] ?? $column_name);
@@ -304,10 +310,9 @@ class ImportTool extends WireData implements Module {
 			$key = substr($key, 11);
 		}
 		$parts = explode('.', $key);
+		$current_item = $this->config->ImportTool ?: [];
 		foreach ($parts as $index => $part) {
-			$current_item = $index === 0
-				? ($this->config->ImportTool[$part] ?? null)
-				: ($current_item[$part] ?? null);
+			$current_item = $current_item[$part] ?? null;
 			if ($current_item === null) {
 				return null;
 			}

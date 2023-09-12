@@ -94,27 +94,34 @@ class ImportTool extends WireData implements Module {
 			if (empty($column)) continue;
 			$value = null;
 			if (is_object($data)) {
-				$value = strpos($column_name, ':') !== false && $data instanceof \SimpleXMLElement
-					? ($data->children(explode(':', $column_name)[0], true)->{explode(':', $column_name)[1]} ?? null)
-					: ($data->{$column_name} ?? null);
-				if (!empty($value) && $value->children()) {
-					$temp_value = [];
-					foreach ($value as $value_item) {
-						$temp_value[] = $value_item;
+				$value_options = (strpos($column_name, ':') !== false && $data instanceof \SimpleXMLElement)
+					? $data->children(explode(':', $column_name)[0], true)
+					: $data->{$column_name};
+				$value_name = strpos($column_name, ':') !== false ? explode(':', $column_name)[1] : $column_name;
+				if (!empty($value_options)) {
+					$value = [];
+					foreach ($value_options as $value_option_name => $value_option_value) {
+						if ($value_option_name != $value_name) continue;
+						$value[] = $value_option_value;
 					}
-					$value = $temp_value;
-				} else {
-					$value = (string) $value;
 				}
+				$value = empty($value)
+					? null
+					: (
+						count($value) === 1
+							? $value[0]
+							: $value
+					);
 			} else {
 				$value = $data[$column_name] ?? null;
 			}
 			if ($value !== null && !empty($column['sanitize'])) {
+				$value = is_object($value) || $column['sanitize'] === 'string' ? (string) $value : $value;
 				if (!is_string($column['sanitize']) && is_callable($column['sanitize'])) {
 					$value = $column['sanitize']($value, [
 						'data' => $data,
 					]);
-				} else {
+				} else if ($column['sanitize'] !== 'string') {
 					$value = $this->sanitizer->sanitize($value, $column['sanitize']);
 				}
 			}
@@ -213,7 +220,7 @@ class ImportTool extends WireData implements Module {
 							}
 							$value = $temp_value;
 						} else {
-							$value = (string) $value;
+							$value = $value;
 						}
 					} else {
 						$value = $data[$column_name] ?? null;

@@ -106,7 +106,7 @@ HTML);
 		$import_file->name = 'import_file';
 		$import_file->label = $this->_('Import file');
 		$import_file->icon = 'file-text';
-		$import_file->extensions = 'csv txt json';
+		$import_file->extensions = 'csv txt json xml';
 		$import_file->maxFiles = 1;
 		$import_file->descriptionRows = 0;
 		$import_file->overwrite = true;

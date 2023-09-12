@@ -23,9 +23,30 @@ class ImportTool extends WireData implements Module {
 	public function importFromFile(string $filename): array {
 
 		$file_ext = pathinfo($filename, PATHINFO_EXTENSION);
-		$reader = $file_ext === 'csv'
-			? new \ImportTool\CSVReader($this->profile['reader_settings'] ?? [])
-			: new \ImportTool\JSONReader($this->profile['reader_settings'] ?? []);
+		$reader = null;
+
+		switch ($file_ext) {
+
+			case 'csv':
+				$reader = new \ImportTool\CSVReader($this->profile['reader_settings'] ?? []);
+				break;
+
+			case 'json':
+				$reader = new \ImportTool\JSONReader($this->profile['reader_settings'] ?? []);
+				break;
+
+			case 'xml':
+				$reader = new \ImportTool\XMLReader($this->profile['reader_settings'] ?? []);
+				break;
+
+			default:
+				$this->error(sprintf(
+					$this->_('Unsupported file extension "%s"'),
+					$file_ext
+				));
+				return [];
+		}
+
 		$reader->open($filename);
 
 		$count = [
@@ -57,7 +78,10 @@ class ImportTool extends WireData implements Module {
 		return $count;
 	}
 
-	protected function importPage(array $data) {
+	/**
+	 * @param array|\SimpleXMLElement $data
+	 */
+	protected function importPage($data) {
 
 		$page = $this->pages->newPage([
 			'template' => $this->profile['template'],
@@ -68,7 +92,23 @@ class ImportTool extends WireData implements Module {
 
 		foreach ($this->profile['values'] as $column_name => $column) {
 			if (empty($column)) continue;
-			$value = $data[$column_name] ?? null;
+			$value = null;
+			if (is_object($data)) {
+				$value = strpos($column_name, ':') !== false && $data instanceof \SimpleXMLElement
+					? ($data->children(explode(':', $column_name)[0], true)->{explode(':', $column_name)[1]} ?? null)
+					: ($data->{$column_name} ?? null);
+				if (!empty($value) && $value->children()) {
+					$temp_value = [];
+					foreach ($value as $value_item) {
+						$temp_value[] = $value_item;
+					}
+					$value = $temp_value;
+				} else {
+					$value = (string) $value;
+				}
+			} else {
+				$value = $data[$column_name] ?? null;
+			}
 			if ($value !== null && !empty($column['sanitize'])) {
 				if (!is_string($column['sanitize']) && is_callable($column['sanitize'])) {
 					$value = $column['sanitize']($value, [
@@ -158,13 +198,31 @@ class ImportTool extends WireData implements Module {
 		}
 
 		if ($page->id && !empty($page->_import_tool_data)) {
-			foreach ($page->_import_tool_data as $field => $value) {
-				if ($this->isCallable($value)) {
-					$value($page, $field, $data[strpos($field, '_import_tool_field_') === 0 ? substr($field, 20) : $field] ?? '', [
+			foreach ($page->_import_tool_data as $field => $data_value) {
+				if ($this->isCallable($data_value)) {
+					$data_column_name = strpos($field, '_import_tool_field_') === 0 ? substr($field, 20) : $field;
+					$value = null;
+					if (is_object($data)) {
+						$value = strpos($data_column_name, ':') !== false && $data instanceof \SimpleXMLElement
+							? ($data->children(explode(':', $data_column_name)[0], true)->{explode(':', $data_column_name)[1]} ?? null)
+							: ($data->{$data_column_name} ?? null);
+						if (!empty($value) && $value->children()) {
+							$temp_value = [];
+							foreach ($value as $value_item) {
+								$temp_value[] = $value_item;
+							}
+							$value = $temp_value;
+						} else {
+							$value = (string) $value;
+						}
+					} else {
+						$value = $data[$column_name] ?? null;
+					}
+					$data_value($page, $field, $value, [
 						'data' => $data,
 					]);
 				} else {
-					$page->set($field, $value);
+					$page->set($field, $data_value);
 				}
 			}
 			$page->save();

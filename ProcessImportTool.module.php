@@ -118,6 +118,7 @@ HTML);
 		$submit = $this->modules->get("InputfieldSubmit");
 		$submit->name = 'submit';
 		$submit->value = $this->_('Import');
+		$submit->id = 'process-import-tool-submit';
 		$form->add($submit);
 
 		return $form;

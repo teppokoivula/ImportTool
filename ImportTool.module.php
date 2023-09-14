@@ -192,10 +192,17 @@ class ImportTool extends WireData implements Module {
 					return false;
 				}
 				$page->_import_tool_action = 'updated';
+			} else if (!empty($this->profile['is_duplicate']) && is_string($this->profile['is_duplicate'])) {
+				$this->message(sprintf(
+					$this->_('Skipping duplicate page: %s'),
+					$page->url
+				));
+				$page->_import_tool_action = 'skipped';
+				return $page;
 			} else {
 				$this->message(sprintf(
-					$this->_('Skipping page with duplicate name "%s"'),
-					$page->name
+					$this->_('Skipping page with duplicate name: %s'),
+					$page->url
 				));
 				$page->_import_tool_action = 'skipped';
 				return $page;

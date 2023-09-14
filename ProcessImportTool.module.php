@@ -63,6 +63,7 @@ class ProcessImportTool extends Process implements Module {
 
 		/** @var InputfieldForm $form */
 		$form = $this->modules->get('InputfieldForm');
+		$form->id = 'process-import-tool-form';
 
 		/** @var InputfieldSelect */
 		$import_profile = $this->modules->get('InputfieldSelect');

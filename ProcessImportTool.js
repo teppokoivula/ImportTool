@@ -1,6 +1,7 @@
 document.addEventListener("DOMContentLoaded", function() {
+	const processImportToolForm = document.getElementById('process-import-tool-form');
 	const processImportToolSubmit = document.getElementById('process-import-tool-submit');
-	processImportToolSubmit.addEventListener('click', () => {
+	processImportToolForm.addEventListener('submit', () => {
 		processImportToolSubmit.disabled = true;
 		processImportToolSubmit.classList.add('ui-state-disabled');
 		const processImportToolSubmitIcon = document.createElement('i');

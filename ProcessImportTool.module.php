@@ -26,6 +26,10 @@ class ProcessImportTool extends Process implements Module {
 		}
 
 		$config = $this->config->ImportTool;
+		if (!$config) {
+			$this->error($this->_('Module configuration is missing'));
+			return false;
+		}
 		$import_profile_name = $form->getChildByName('import_profile')->value;
 		$import_profile = $config['profiles'][$import_profile_name] ?? null;
 		if (empty($import_profile)) {
@@ -65,6 +69,12 @@ class ProcessImportTool extends Process implements Module {
 		$form = $this->modules->get('InputfieldForm');
 		$form->id = 'process-import-tool-form';
 
+		if (!$this->config->ImportTool) {
+			$this->error(
+				$this->_('Import profiles must be defined via $config->ImportTool before you can import content.'),
+			);
+		}
+
 		/** @var InputfieldSelect */
 		$import_profile = $this->modules->get('InputfieldSelect');
 		$import_profile->name = 'import_profile';
@@ -82,7 +92,7 @@ notes.style.wordBreak = 'break-all'
 if (!notes.getAttribute('data-notes')) notes.setAttribute('data-notes', notes.innerText)
 notes.innerText = this.selectedIndex ? this.options[this.selectedIndex].getAttribute('data-notes') : notes.getAttribute('data-notes')
 JAVASCRIPT);
-		if (count($this->config->ImportTool['profiles'])) {
+		if ($this->config->ImportTool && count($this->config->ImportTool['profiles'])) {
 			foreach ($this->config->ImportTool['profiles'] as $profile_name => $profile_data) {
 				$import_profile->addOption($profile_name, $profile_data['label'] ?? $profile_name, [
 					'data-notes' => $profile_data['notes'] ?? '',
@@ -120,6 +130,11 @@ HTML);
 		$submit->name = 'submit';
 		$submit->value = $this->_('Import');
 		$submit->id = 'process-import-tool-submit';
+		if (!$this->config->ImportTool) {
+			$submit->attr('disabled', true);
+			$submit->attr('style', 'pointer-events: none');
+			$submit->addClass('ui-state-disabled');
+		}
 		$form->add($submit);
 
 		return $form;

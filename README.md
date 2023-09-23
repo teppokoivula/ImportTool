@@ -50,9 +50,12 @@ $config->ImportTools = [
 			'reader_settings' => [
 				'delimiter' => ',',
 				'enclosure' => '"',
-			]
+			],
 		],
 	],
+	// set to true if users should be able to provide custom profile configuration settings runtime;
+	// please note, though, that this is an advanced option that should only be used when necessary!
+	'allow_overriding_profile_configuration' => false,
 ];
 ```
 

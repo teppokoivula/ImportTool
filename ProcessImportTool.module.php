@@ -30,6 +30,7 @@ class ProcessImportTool extends Process implements Module {
 			$this->error($this->_('Module configuration is missing'));
 			return false;
 		}
+
 		$import_profile_name = $form->getChildByName('import_profile')->value;
 		$import_profile = $config['profiles'][$import_profile_name] ?? null;
 		if (empty($import_profile)) {
@@ -38,6 +39,21 @@ class ProcessImportTool extends Process implements Module {
 		}
 
 		$this->session->setFor('ImportTool', 'import_profile_name', $import_profile_name);
+
+		if ($config['allow_overriding_profile_configuration']) {
+			$profile_configuration_field = $form->getChildByName('profile_configuration');
+			$profile_configuration = $profile_configuration_field ? $profile_configuration_field->value : null;
+			if ($profile_configuration) {
+				$this->session->setFor('ImportTool', 'profile_configuration', $profile_configuration);
+				$profile_configuration_array = json_decode($profile_configuration, true);
+				if (!is_array($profile_configuration_array)) {
+					$this->error($this->_('Invalid import configuration'));
+					return false;
+				}
+				$config['profiles'][$import_profile_name] = array_merge($config['profiles'][$import_profile_name], $profile_configuration_array);
+				$this->config->ImportTool = $config;
+			}
+		}
 
 		$import_file_ext = pathinfo($import_file, PATHINFO_EXTENSION);
 		$import_file_name = 'import-' . time() . '-' . $this->user->id . '.' . $import_file_ext;
@@ -65,11 +81,13 @@ class ProcessImportTool extends Process implements Module {
 
 	protected function getForm(): InputfieldForm {
 
+
 		/** @var InputfieldForm $form */
 		$form = $this->modules->get('InputfieldForm');
 		$form->id = 'process-import-tool-form';
 
-		if (!$this->config->ImportTool) {
+		$config = $this->config->ImportTool;
+		if (!$config) {
 			$this->error(
 				$this->_('Import profiles must be defined via $config->ImportTool before you can import content.'),
 			);
@@ -92,8 +110,8 @@ notes.style.wordBreak = 'break-all'
 if (!notes.getAttribute('data-notes')) notes.setAttribute('data-notes', notes.innerText)
 notes.innerText = this.selectedIndex ? this.options[this.selectedIndex].getAttribute('data-notes') : notes.getAttribute('data-notes')
 JAVASCRIPT);
-		if ($this->config->ImportTool && count($this->config->ImportTool['profiles'])) {
-			foreach ($this->config->ImportTool['profiles'] as $profile_name => $profile_data) {
+		if ($config && count($config['profiles'])) {
+			foreach ($config['profiles'] as $profile_name => $profile_data) {
 				$import_profile->addOption($profile_name, $profile_data['label'] ?? $profile_name, [
 					'data-notes' => $profile_data['notes'] ?? '',
 				]);
@@ -125,12 +143,28 @@ HTML);
 		$import_file->attr('required', true);
 		$form->add($import_file);
 
+		if ($config && !empty($config['allow_overriding_profile_configuration'])) {
+			/** @var InputfieldTextarea */
+			$profile_configuration = $this->modules->get('InputfieldTextarea');
+			$profile_configuration->name = 'profile_configuration';
+			$profile_configuration->value = $this->session->getFor('ImportTool', 'profile_configuration');
+			$profile_configuration->label = $this->_('Import profile configuration');
+			$profile_configuration->icon = 'code';
+			$profile_configuration->description = $this->_('You can override profile configuration settings here. Provided settings are merged with preconfigured profile settings runtime. Please note that this feature is considered advanced and should only be used if you know what you are doing.');
+			$profile_configuration->notes = sprintf(
+				$this->_('Provide configuration settings as JSON. Example: %s'),
+				'`{"parent": 1234, "limit": 100}`',
+			);
+			$profile_configuration->rows = 10;
+			$form->add($profile_configuration);
+		}
+
 		/** @var InputfieldSubmit */
 		$submit = $this->modules->get("InputfieldSubmit");
 		$submit->name = 'submit';
 		$submit->value = $this->_('Import');
 		$submit->id = 'process-import-tool-submit';
-		if (!$this->config->ImportTool) {
+		if (!$config) {
 			$submit->attr('disabled', true);
 			$submit->attr('style', 'pointer-events: none');
 			$submit->addClass('ui-state-disabled');

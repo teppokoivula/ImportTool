@@ -83,6 +83,16 @@ class ImportTool extends WireData implements Module {
 	 */
 	protected function importPage($data) {
 
+		if (empty($this->profile['template'])) {
+			$this->error($this->_('Missing required template'));
+			return false;
+		}
+
+		if (empty($this->profile['parent'])) {
+			$this->error($this->_('Missing required parent page'));
+			return false;
+		}
+
 		$page = $this->pages->newPage([
 			'template' => $this->profile['template'],
 			'parent' => $this->profile['parent'],

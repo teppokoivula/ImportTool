@@ -23,6 +23,7 @@ $config->ImportTools = [
 			'template' => 'member',
 			'parent' => 1282,
 			'values' => [
+				// note: key (here 'title') should be a reference to a column name/header from the import file
 				'title' => [
 					'field' => 'title',
 					'sanitize' => 'text',
@@ -42,6 +43,13 @@ $config->ImportTools = [
 				'email' => [
 					'field' => 'email',
 					'sanitize' => 'email',
+				],
+				// if you want to set page values dynamically with code, you can use a key name that doesn't match any
+				// column name/header from the import file:
+				'import_timestamp' => [
+					'callback' => function($page, $field_name, $value, $args) {
+						$page->import_timestamp = date('Y-m-d H:i:s');
+					},
 				],
 			],
 			'limit' => 10,

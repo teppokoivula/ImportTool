@@ -23,6 +23,10 @@ class CSVReader extends Reader {
 				$this->settings['delimiter'] ?? ',',
 				$this->settings['enclosure'] ?? '"'
 			);
+			if ($this->header !== false) {
+				// make sure that first header column doesn't contain BOM
+				$this->header[0] = str_replace("\xEF\xBB\xBF", '', $this->header[0]);
+			}
 			return true;
 		}
 		return false;

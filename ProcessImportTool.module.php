@@ -70,6 +70,7 @@ class ProcessImportTool extends Process implements Module {
 			if ($count = $importTool->importFromFile($import_file)) {
 				$this->session->message(implode(', ', array_filter([
 					sprintf($this->_('%d rows processed in %s seconds'), $count['row_num'], $count['time']),
+					sprintf($this->_('peak memory usage %s'), wireBytesStr(memory_get_peak_usage())),
 					empty($count['imported']) ? null : sprintf($this->_('%d pages imported'), $count['imported']),
 					empty($count['updated']) ? null : sprintf($this->_('%d pages updated'), $count['updated']),
 					empty($count['skipped']) ? null : sprintf($this->_('%d pages skipped'), $count['skipped']),

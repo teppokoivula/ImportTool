@@ -68,6 +68,7 @@ class ImportTool extends WireData implements Module {
 				if (!empty($this->profile['limit']) && $count['imported'] >= $this->profile['limit']) {
 					break;
 				}
+				$this->pages->uncache($imported_page);
 			}
 		}
 
@@ -199,6 +200,7 @@ class ImportTool extends WireData implements Module {
 			} else if ($on_duplicate === 'update_existing') {
 				$page = $this->updatePage($existing_page, $page, $data);
 				if (!$page) {
+					$this->pages->uncache($existing_page);
 					return false;
 				}
 				$page->_import_tool_action = 'updated';
@@ -208,6 +210,7 @@ class ImportTool extends WireData implements Module {
 					$page->url
 				));
 				$page->_import_tool_action = 'skipped';
+				$this->pages->uncache($existing_page);
 				return $page;
 			} else {
 				$this->message(sprintf(
@@ -215,6 +218,7 @@ class ImportTool extends WireData implements Module {
 					$page->url
 				));
 				$page->_import_tool_action = 'skipped';
+				$this->pages->uncache($existing_page);
 				return $page;
 			}
 		} else {

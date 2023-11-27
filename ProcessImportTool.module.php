@@ -40,7 +40,7 @@ class ProcessImportTool extends Process implements Module {
 
 		$this->session->setFor('ImportTool', 'import_profile_name', $import_profile_name);
 
-		if ($config['allow_overriding_profile_configuration']) {
+		if ($import_profile['allow_overriding_profile_configuration'] ?? $config['allow_overriding_profile_configuration'] ?? false) {
 			$profile_configuration_field = $form->getChildByName('profile_configuration');
 			$profile_configuration = $profile_configuration_field ? $profile_configuration_field->value : null;
 			if ($profile_configuration) {
@@ -82,7 +82,6 @@ class ProcessImportTool extends Process implements Module {
 
 	protected function getForm(): InputfieldForm {
 
-
 		/** @var InputfieldForm $form */
 		$form = $this->modules->get('InputfieldForm');
 		$form->id = 'process-import-tool-form';
@@ -110,26 +109,31 @@ var notes = this.nextElementSibling
 notes.style.wordBreak = 'break-all'
 if (!notes.getAttribute('data-notes')) notes.setAttribute('data-notes', notes.innerText)
 notes.innerText = this.selectedIndex ? this.options[this.selectedIndex].getAttribute('data-notes') : notes.getAttribute('data-notes')
+var profileConfiguration = document.getElementById('wrap_Inputfield_profile_configuration')
+console.log(profileConfiguration)
+if (profileConfiguration) {
+	console.log(1)
+	var profileConfigurationTextarea = profileConfiguration.querySelector('textarea')
+	if (this.options[this.selectedIndex].getAttribute('data-override-config') == 1) {
+		console.log(2)
+		profileConfiguration.removeAttribute('hidden')
+		profileConfigurationTextarea.val(profileConfigurationTextarea.getAttribute('data-val'))
+	} else {
+		profileConfiguration.setAttribute('hidden', '')
+		profileConfigurationTextarea.setAttribute('data-val', profileConfigurationTextarea.val())
+		profileConfigurationTextarea.val('')
+	}
+}
 JAVASCRIPT);
 		if ($config && count($config['profiles'])) {
 			foreach ($config['profiles'] as $profile_name => $profile_data) {
 				$import_profile->addOption($profile_name, $profile_data['label'] ?? $profile_name, [
 					'data-notes' => $profile_data['notes'] ?? '',
+					'data-override-config' => (int) ($profile_data['allow_overriding_profile_configuration'] ?? $config['allow_overriding_profile_configuration'] ?? false),
 				]);
 			}
 		}
 		$form->add($import_profile);
-
-		$import_profile_name = $this->session->getfor('ImportTool', 'import_profile_name');
-		if ($import_profile_name) {
-			$import_profile->appendMarkup(<<<HTML
-<script>
-var importProfile = document.getElementById('Inputfield_import_profile')
-importProfile.value = '$import_profile_name'
-importProfile.dispatchEvent(new Event('change'))
-</script>
-HTML);
-		}
 
 		/** @var InputfieldFile */
 		$import_file = $this->modules->get('InputfieldFile');
@@ -144,21 +148,20 @@ HTML);
 		$import_file->attr('required', true);
 		$form->add($import_file);
 
-		if ($config && !empty($config['allow_overriding_profile_configuration'])) {
-			/** @var InputfieldTextarea */
-			$profile_configuration = $this->modules->get('InputfieldTextarea');
-			$profile_configuration->name = 'profile_configuration';
-			$profile_configuration->value = $this->session->getFor('ImportTool', 'profile_configuration');
-			$profile_configuration->label = $this->_('Import profile configuration');
-			$profile_configuration->icon = 'code';
-			$profile_configuration->description = $this->_('You can override profile configuration settings here. Provided settings are merged with preconfigured profile settings runtime. Please note that this feature is considered advanced and should only be used if you know what you are doing.');
-			$profile_configuration->notes = sprintf(
-				$this->_('Provide configuration settings as JSON. Example: %s'),
-				'`{"parent": 1234, "limit": 100}`',
-			);
-			$profile_configuration->rows = 10;
-			$form->add($profile_configuration);
-		}
+		/** @var InputfieldTextarea */
+		$profile_configuration = $this->modules->get('InputfieldTextarea');
+		$profile_configuration->name = 'profile_configuration';
+		$profile_configuration->value = $this->session->getFor('ImportTool', 'profile_configuration');
+		$profile_configuration->label = $this->_('Import profile configuration');
+		$profile_configuration->icon = 'code';
+		$profile_configuration->wrapAttr('hidden', true);
+		$profile_configuration->description = $this->_('You can override profile configuration settings here. Provided settings are merged with preconfigured profile settings runtime. Please note that this feature is considered advanced and should only be used if you know what you are doing.');
+		$profile_configuration->notes = sprintf(
+			$this->_('Provide configuration settings as JSON. Example: %s'),
+			'`{"parent": 1234, "limit": 100}`',
+		);
+		$profile_configuration->rows = 10;
+		$form->add($profile_configuration);
 
 		/** @var InputfieldSubmit */
 		$submit = $this->modules->get("InputfieldSubmit");
@@ -171,6 +174,19 @@ HTML);
 			$submit->addClass('ui-state-disabled');
 		}
 		$form->add($submit);
+
+		$import_profile_name = $this->session->getfor('ImportTool', 'import_profile_name');
+		if ($import_profile_name) {
+			$import_profile->appendMarkup(<<<HTML
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+	var importProfile = document.getElementById('Inputfield_import_profile')
+	importProfile.value = '$import_profile_name'
+	importProfile.dispatchEvent(new Event('change'))
+})
+</script>
+HTML);
+		}
 
 		return $form;
 	}

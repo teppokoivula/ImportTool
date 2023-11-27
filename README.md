@@ -152,7 +152,7 @@ $config->ImportTools = [
 			'notes' => 'title,first_name,last_name,date_of_birth,email',
 ```
 
-Import proifles can specify "hooks" array key to hook into predefined parts of the import process (before_import_page, import_page, after_import_page). Here's an example of the hooks syntax:
+Import profiles can specify "hooks" array key to hook into predefined parts of the import process (before_import_page, import_page, after_import_page). Here's an example of the hooks syntax:
 
 ```php
 	'profiles' => [

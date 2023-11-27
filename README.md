@@ -152,4 +152,20 @@ $config->ImportTools = [
 			'notes' => 'title,first_name,last_name,date_of_birth,email',
 ```
 
+Import proifles can specify "hooks" array key to hook into predefined parts of the import process (before_import_page, import_page, after_import_page). Here's an example of the hooks syntax:
+
+```php
+	'profiles' => [
+		'members' => [
+			'hooks' => [
+				'before_import_page' => function(HookEvent $event) {
+					$data = $event->arguments(0);
+					$existing_page = wire()->pages->findOne('member_id=' . (int) $data['id']);
+					if (!$existing_page->id) return;
+					$existing_page->_import_tool_action = 'skipped';
+					return $existing_page;
+				},
+			],
+```
+
 4) Navigate to the Import Tool page in the Admin, select a profile and file, and hit "Import".

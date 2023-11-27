@@ -3,6 +3,7 @@
 class ImportTool extends WireData implements Module {
 
 	protected $profile;
+	protected $profile_hooks = [];
 
 	public function init() {
 		/** @var WireClassLoader */
@@ -17,6 +18,41 @@ class ImportTool extends WireData implements Module {
 		$this->profile = $config['profiles'][$profile] ?? null;
 		if (empty($this->profile)) {
 			$this->error($this->_('Import profile not found'));
+		}
+		if (!empty($this->profile_hooks)) {
+			foreach ($this->profile_hooks as $hook_id) {
+				$this->removeHook($hook_id);
+			}
+		}
+		if (!empty($this->profile['hooks'])) {
+			foreach ($this->profile['hooks'] as $hook_name => $hook) {
+				if (!in_array($hook_name, [
+					'before_import_page',
+					'import_page',
+					'after_import_page',
+				])) {
+					$this->error($this->_('Unrecognized hook name'));
+				}
+				if (is_string($hook) && strpos($hook, 'ImportTool.') === 0) {
+					$hook = $this->getDotArray($hook);
+				}
+				if ($this->isCallable($hook)) {
+					$before = false;
+					$after = false;
+					$method = $hook_name;
+					if (strpos($hook_name, 'before_') === 0) {
+						$before = true;
+						$method = substr($hook_name, 7);
+					} else if (strpos($hook_name, 'after_') === 0) {
+						$after = true;
+						$method = substr($hook_name, 6);
+					}
+					$this->profile_hooks[$hook_name] = $this->addHook('ImportTool::' . $this->sanitizer->camelCase($method), $hook, [
+						'before' => $before,
+						'after' => $after,
+					]);
+				}
+			}
 		}
 	}
 

@@ -20,6 +20,10 @@ class ImportTool extends WireData implements Module {
 		}
 	}
 
+	public function getProfile(): ?array {
+		return $this->profile;
+	}
+
 	public function importFromFile(string $filename, array $args = []): array {
 
 		$file_ext = pathinfo($filename, PATHINFO_EXTENSION);
@@ -82,7 +86,7 @@ class ImportTool extends WireData implements Module {
 	/**
 	 * @param array|\SimpleXMLElement $data
 	 */
-	protected function importPage($data) {
+	protected function ___importPage($data) {
 
 		if (empty($this->profile['template'])) {
 			$this->error($this->_('Missing required template'));

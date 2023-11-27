@@ -163,7 +163,8 @@ Import profiles can specify "hooks" array key to hook into predefined parts of t
 					$existing_page = wire()->pages->findOne('member_id=' . (int) $data['id']);
 					if (!$existing_page->id) return;
 					$existing_page->_import_tool_action = 'skipped';
-					return $existing_page;
+					$event->replace = true;
+					$event->return = $existing_page;
 				},
 			],
 ```

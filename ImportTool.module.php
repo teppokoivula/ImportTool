@@ -20,7 +20,7 @@ class ImportTool extends WireData implements Module {
 		}
 	}
 
-	public function importFromFile(string $filename): array {
+	public function importFromFile(string $filename, array $args = []): array {
 
 		$file_ext = pathinfo($filename, PATHINFO_EXTENSION);
 		$reader = null;
@@ -73,7 +73,7 @@ class ImportTool extends WireData implements Module {
 		}
 
 		$reader->close();
-		$this->files->unlink($filename);
+		if (!empty($args['unlink'])) $this->files->unlink($filename);
 		$count['time'] = Debug::timer($count['time']);
 
 		return $count;

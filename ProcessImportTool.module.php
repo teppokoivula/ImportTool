@@ -67,7 +67,9 @@ class ProcessImportTool extends Process implements Module {
 			/** @var ImportTool */
 			$importTool = $this->modules->get('ImportTool');
 			$importTool->setProfile($import_profile_name);
-			if ($count = $importTool->importFromFile($import_file)) {
+			if ($count = $importTool->importFromFile($import_file, [
+				'unlink' => true,
+			])) {
 				$this->session->message(implode(', ', array_filter([
 					sprintf($this->_('%d rows processed in %s seconds'), $count['row_num'], $count['time']),
 					sprintf($this->_('peak memory usage %s'), wireBytesStr(memory_get_peak_usage())),

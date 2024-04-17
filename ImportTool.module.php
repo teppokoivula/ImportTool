@@ -396,7 +396,7 @@ class ImportTool extends WireData implements Module {
 					$callback(
 						$existing_page,
 						$column['field'] ?? $column_name ?? '_import_tool_field_' . $column_name,
-						$data[$column_name],
+						$data[$column_name] ?? null,
 						[
 							'data' => $data,
 						]

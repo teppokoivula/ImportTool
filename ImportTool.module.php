@@ -99,7 +99,7 @@ class ImportTool extends WireData implements Module {
 
 		while ($row = $reader->read()) {
 			++$count['row_num'];
-			if (empty($row) || count($row) == 1 && empty($row[0])) {
+			if (empty($row) || count($row) == 1 && isset($row[0]) && empty($row[0])) {
 				continue;
 			}
 			$imported_page = $this->importPage($row);
@@ -140,7 +140,6 @@ class ImportTool extends WireData implements Module {
 		]);
 		$page->_import_tool_data = [];
 		$page->setTrackChanges(true);
-
 		foreach ($this->profile['values'] as $column_name => $column) {
 			if (empty($column)) continue;
 			$value = null;
